@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -97,12 +98,16 @@ const GradePredictionForm = () => {
     }
 
     try {
-      const result = await predictGrade(formData);
-      setPrediction(result);
-
-      toast({
-        title: "Prediction Complete!",
-        description: `Your predicted grade is ${result.predicted_grade} with ${result.confidence}% confidence.`,
+      // Use the correct signature for predictGrade (with callbacks)
+      await predictGrade({
+        formData,
+        setIsLoading,
+        setPrediction: (result) => {
+          setPrediction(result);
+          setShowResults(true);
+        },
+        toast,
+        setAnomalies,
       });
     } catch (error) {
       console.error('Prediction error:', error);
@@ -111,8 +116,6 @@ const GradePredictionForm = () => {
         description: "Unable to process prediction. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 

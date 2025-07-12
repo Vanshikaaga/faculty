@@ -1,5 +1,14 @@
 
 // Grade prediction service with anomaly detection and trend analysis
+
+// Params for predictGrade function
+export interface PredictGradeParams {
+  formData: PredictionFormData;
+  setIsLoading?: (loading: boolean) => void;
+  setPrediction?: (result: PredictionResult) => void;
+  toast?: (options: any) => void;
+  setAnomalies?: (anomalies: string[]) => void;
+}
 export interface PredictionFormData {
   studentId: string;
   previousSemesterGPA: string;
@@ -137,8 +146,93 @@ export const analyzeLearningTrend = (formData: PredictionFormData): LearningTren
   }
 };
 
+
+export const predictGrade = async ({
+  formData,
+  setIsLoading = () => {},
+  setPrediction = () => {},
+  toast = () => {},
+  setAnomalies = () => {},
+}: PredictGradeParams) => {
+  setIsLoading(true);
+  console.log('Starting prediction with data:', formData);
+
+  const foundAnomalies = detectInputAnomalies(formData);
+  setAnomalies(foundAnomalies);
+//
+ // if (foundAnomalies.length > 0) {
+  //  toast({
+   //   title: "Possible Data Anomalies Detected",
+    //  description: foundAnomalies.join(' '),
+    //  variant: "destructive",
+   // });
+   // setIsLoading(false);
+   // return;
+ // }
+  //
+
+  try {
+    const requestData = {
+      previousSemesterGPA: formData.previousSemesterGPA,
+      numberOfBacklogs: formData.numberOfBacklogs,
+      cumulativeGPA: formData.cumulativeGPA,
+      t1Marks: formData.t1Marks,
+      t2Marks: formData.t2Marks,
+      t3Marks: formData.t3Marks,
+      attendancePercentage: formData.attendancePercentage,
+      taMarks: formData.taMarks,
+      adherenceToDeadlines: formData.adherenceToDeadlines[0],
+    };
+
+    console.log('Sending request to API:', requestData);
+
+   const response = await fetch('/predict', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData),
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('Prediction result:', result);
+
+    setPrediction(result);
+
+    toast({
+      title: "Prediction Complete!",
+      description: `Your predicted grade is ${result.predicted_grade} with ${result.confidence}% confidence.`,
+    });
+  } catch (error: any) {
+    console.error('Prediction error:', error);
+
+    let errorMessage = "Failed to get prediction.";
+    if (error.message?.includes('Failed to fetch')) {
+      errorMessage = "Cannot connect to the prediction server. Please make sure the Python backend is running on localhost:5000.";
+    } else if (error.message) {
+      errorMessage = `Prediction error: ${error.message}`;
+    }
+
+    toast({
+      title: "Prediction Failed",
+      description: errorMessage,
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
 // Mock prediction service (replace with actual API call to Python backend)
-export const predictGrade = async (formData: PredictionFormData): Promise<PredictionResult> => {
+export const mockpredictGrade = async (formData: PredictionFormData): Promise<PredictionResult> => {
   // This would be replaced with actual API call to Python Flask/FastAPI backend
   console.log('Predicting grade with XGBoost model for data:', formData);
   

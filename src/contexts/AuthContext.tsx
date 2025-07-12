@@ -20,10 +20,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Demo credentials
 const DEMO_CREDENTIALS = {
   email: 'faculty@jiit.ac.in',
-  password: 'jiit2024',
+  password: 'jiit',
   user: {
     id: '1',
-    name: 'Dr. Rajesh Kumar',
+    name: 'Vanshika Agarwal',
     email: 'faculty@jiit.ac.in',
     department: 'Computer Science & Engineering'
   }

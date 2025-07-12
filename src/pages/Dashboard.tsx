@@ -1,37 +1,58 @@
-
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle
+} from '@/components/ui/card';
 import { Users, BookOpen, Clock, TrendingUp, Calendar, Bell } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const [dashboardData, setDashboardData] = useState({
+    totalStudents: 0,
+    activeCourses: 0,
+    gradeAverage: 0,
+    upcomingClasses: [],
+  });
+
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      try {
+        const res = await axios.get('http://localhost:5003/api/dashboard');
+        setDashboardData(res.data);
+      } catch (error) {
+        console.error("❌ Failed to load dashboard data:", error);
+      }
+    };
+
+    fetchDashboard();
+  }, []);
 
   const stats = [
     {
       title: 'Total Students',
-      value: '156',
+      value: dashboardData.totalStudents,
       description: 'Across all courses',
       icon: Users,
       color: 'bg-blue-500',
     },
     {
       title: 'Active Courses',
-      value: '4',
+      value: dashboardData.activeCourses,
       description: 'This semester',
       icon: BookOpen,
       color: 'bg-green-500',
     },
     {
       title: 'Attendance Rate',
-      value: '87%',
+      value: '87%', // Static or fetched separately
       description: 'Last 30 days',
       icon: Clock,
       color: 'bg-orange-500',
     },
     {
       title: 'Grade Average',
-      value: '8.2',
+      value: dashboardData.gradeAverage,
       description: 'Current semester',
       icon: TrendingUp,
       color: 'bg-purple-500',
@@ -53,27 +74,6 @@ const Dashboard = () => {
       title: 'New assignment created',
       description: 'Algorithm Analysis - Due next week',
       time: '1 day ago',
-    },
-  ];
-
-  const upcomingClasses = [
-    {
-      course: 'Data Structures',
-      code: 'CSE201',
-      time: '10:00 AM - 11:30 AM',
-      room: 'Room 301',
-    },
-    {
-      course: 'Database Management',
-      code: 'CSE301',
-      time: '2:00 PM - 3:30 PM',
-      room: 'Room 205',
-    },
-    {
-      course: 'Software Engineering',
-      code: 'CSE401',
-      time: '4:00 PM - 5:30 PM',
-      room: 'Room 102',
     },
   ];
 
@@ -117,16 +117,20 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {upcomingClasses.map((class_, index) => (
-                <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-2 h-12 bg-blue-500 rounded-full"></div>
-                  <div className="flex-1">
-                    <h4 className="font-medium text-gray-900">{class_.course}</h4>
-                    <p className="text-sm text-gray-600">{class_.code} • {class_.room}</p>
-                    <p className="text-sm text-gray-500">{class_.time}</p>
+              {dashboardData.upcomingClasses?.length > 0 ? (
+                dashboardData.upcomingClasses.map((class_, index) => (
+                  <div key={index} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="w-2 h-12 bg-blue-500 rounded-full"></div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900">{class_.course}</h4>
+                      <p className="text-sm text-gray-600">{class_.code} • {class_.room}</p>
+                      <p className="text-sm text-gray-500">{class_.time}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">No classes scheduled today.</p>
+              )}
             </div>
           </CardContent>
         </Card>

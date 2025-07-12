@@ -1,0 +1,44 @@
+[
+  {
+    "name": "dfctggy",
+    "rollNo": "3456789087",
+    "sampleCount": 50,
+    "registrationComplete": true,
+    "createdAt": "2025-07-05T22:45:56.968525"
+  },
+  {
+    "name": "tim",
+    "rollNo": "12777128",
+    "sampleCount": 50,
+    "registrationComplete": true,
+    "createdAt": "2025-07-06T10:42:25.500053"
+  },
+  {
+    "name": "ijk",
+    "rollNo": "79",
+    "sampleCount": 50,
+    "registrationComplete": true,
+    "createdAt": "2025-07-06T10:47:50.089814"
+  },
+  {
+    "name": "Vanshika",
+    "rollNo": "22103276",
+    "sampleCount": 50,
+    "registrationComplete": true,
+    "createdAt": "2025-07-07T14:03:48.052717"
+  },
+  {
+    "name": "Pradip",
+    "rollNo": "22113211",
+    "sampleCount": 50,
+    "registrationComplete": true,
+    "createdAt": "2025-07-07T14:13:59.914677"
+  },
+  {
+    "name": "Prarabdh",
+    "rollNo": "22103280",
+    "sampleCount": 50,
+    "registrationComplete": true,
+    "createdAt": "2025-07-08T01:31:25.020352"
+  }
+]

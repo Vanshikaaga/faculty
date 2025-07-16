@@ -5,6 +5,9 @@ import joblib
 import numpy as np
 import pandas as pd
 import os
+import subprocess
+import sys
+import json
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -105,6 +108,40 @@ def predict_grade():
     except Exception as e:
         print(f"Prediction error: {str(e)}")
         return jsonify({"error": f"Prediction failed: {str(e)}"}), 500
+
+@app.route('/anomaly-detect', methods=['POST'])
+def anomaly_detect():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Prepare the record for the anomaly detection model
+        record = {
+            'Cumulative_GPA': float(data['cumulativeGPA']),
+            'No_of_Backlogs': int(data['numberOfBacklogs']),
+            'T1_Marks': int(data['t1Marks']),
+            'T2_Marks': int(data['t2Marks']),
+            'Attendance_Percentage': int(data['attendancePercentage']),
+            'TA_Marks': int(data['taMarks'])
+        }
+
+        # Call the anomaly_detection.py script
+        proc = subprocess.Popen(
+            [sys.executable, 'anomaly_detection.py'],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=os.path.dirname(os.path.abspath(__file__))
+        )
+        input_json = json.dumps(record).encode('utf-8')
+        stdout, stderr = proc.communicate(input=input_json)
+        if proc.returncode != 0:
+            return jsonify({'error': 'Anomaly detection failed', 'details': stderr.decode('utf-8')}), 500
+        result = json.loads(stdout.decode('utf-8'))
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': f'Anomaly detection failed: {str(e)}'}), 500
 
 @app.route('/model-info', methods=['GET'])
 def model_info():

@@ -57,4 +57,15 @@ router.post('/submit', auth, async (req, res) => {
   }
 });
 
+// Fetch all grades from db_grade (for analytics dashboard)
+router.get('/all', async (req, res) => {
+  try {
+    const { fetchAllGrades } = require('../../db_grade/fetchGrades');
+    const grades = await fetchAllGrades();
+    res.json(grades);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

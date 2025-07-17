@@ -15,11 +15,21 @@ import {
   LearningTrend,
   detectInputAnomalies, 
   analyzeLearningTrend, 
-  predictGrade 
+  predictGrade,
+  detectAnomaly,
+  saveGradeRecord,
+  GradeRecord
 } from '@/services/gradePredictionService';
 
-const GradePredictionForm = () => {
-  const [formData, setFormData] = useState<PredictionFormData>({
+interface GradePredictionFormProps {
+  selectedCourse: string;
+  addGradeRecord: (record: any) => void;
+  refreshGrades?: () => void;
+}
+
+const GradePredictionForm: React.FC<GradePredictionFormProps> = ({ selectedCourse, addGradeRecord, refreshGrades }) => {
+  const [formData, setFormData] = useState<PredictionFormData & { name?: string }>({
+    name: '',
     studentId: '',
     previousSemesterGPA: '',
     numberOfBacklogs: '',
@@ -37,6 +47,7 @@ const GradePredictionForm = () => {
   const [anomalies, setAnomalies] = useState<string[]>([]);
   const [learningTrend, setLearningTrend] = useState<LearningTrend | null>(null);
   const [showResults, setShowResults] = useState(false);
+  const [isAnomaly, setIsAnomaly] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   const handleInputChange = (field: string, value: string) => {
@@ -81,7 +92,7 @@ const GradePredictionForm = () => {
     setShowResults(true);
     console.log('Starting prediction with data:', formData);
 
-    // Detect anomalies
+    // Detect anomalies (heuristic)
     const foundAnomalies = detectInputAnomalies(formData);
     setAnomalies(foundAnomalies);
 
@@ -98,13 +109,54 @@ const GradePredictionForm = () => {
     }
 
     try {
+      // Call backend anomaly detection
+      const anomalyResult = await detectAnomaly(formData);
+      setIsAnomaly(anomalyResult.anomaly);
+
       // Use the correct signature for predictGrade (with callbacks)
       await predictGrade({
         formData,
         setIsLoading,
-        setPrediction: (result) => {
+        setPrediction: async (result) => {
           setPrediction(result);
           setShowResults(true);
+
+          // Create grade record for database
+          const gradeRecord: GradeRecord = {
+            name: formData.name || '',
+            rollNo: formData.studentId,
+            backlogs: Number(formData.numberOfBacklogs),
+            prevSemesterGPA: Number(formData.previousSemesterGPA),
+            cumulativeGPA: Number(formData.cumulativeGPA),
+            test1: Number(formData.t1Marks),
+            test2: Number(formData.t2Marks),
+            test3: Number(formData.t3Marks),
+            attendancePercent: Number(formData.attendancePercentage),
+            adherenceToDeadlines: Number(formData.taMarks),
+            grade: result.predicted_grade,
+            course: selectedCourse,
+          };
+
+          // Save to database
+          const saveSuccess = await saveGradeRecord(gradeRecord);
+          
+          if (saveSuccess) {
+            toast({
+              title: "Record Saved",
+              description: "Grade prediction record has been saved to the database.",
+            });
+            // Don't refresh immediately - let user read the results first
+            // Refresh will happen when user navigates away and comes back
+          } else {
+            toast({
+              title: "Save Warning",
+              description: "Grade prediction completed but failed to save to database. Please check if the database server is running.",
+              variant: "destructive",
+            });
+          }
+
+          // Add new record to analytics (for immediate display)
+          addGradeRecord(gradeRecord);
         },
         toast,
         setAnomalies,
@@ -116,6 +168,9 @@ const GradePredictionForm = () => {
         description: "Unable to process prediction. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      // Ensure loading state is stopped in all cases
+      setIsLoading(false);
     }
   };
 
@@ -157,6 +212,26 @@ const GradePredictionForm = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Name Field */}
+        <Card className="shadow-lg border-0">
+          <CardHeader className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-t-lg">
+            <CardTitle className="flex items-center">
+              <BookOpen className="h-5 w-5 mr-2" />
+              Student Name
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div>
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                placeholder="Enter your name"
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+              />
+            </div>
+          </CardContent>
+        </Card>
         {/* Student Information */}
         <Card className="shadow-lg border-0">
           <CardHeader className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-t-lg">
@@ -343,7 +418,7 @@ const GradePredictionForm = () => {
       </div>
 
       {/* Prediction Button */}
-      <div className="text-center">
+      <div className="text-center space-y-4">
         <Button
           onClick={handlePredict}
           disabled={!isFormValid() || isLoading}
@@ -358,6 +433,22 @@ const GradePredictionForm = () => {
             'Predict Grade'
           )}
         </Button>
+        
+        {/* Manual refresh button - only show if refreshGrades function is available */}
+        {refreshGrades && (
+          <div className="mt-4">
+            <Button
+              onClick={refreshGrades}
+              variant="outline"
+              className="text-sm px-4 py-2"
+            >
+              Refresh Analytics Data
+            </Button>
+            <p className="text-xs text-gray-500 mt-2">
+              Click to update charts and tables with latest data from database
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Results Section */}
@@ -386,7 +477,48 @@ const GradePredictionForm = () => {
             </Card>
           )}
 
-          {/* Anomaly Detection */}
+          {/* Anomaly Detection (Model) */}
+          {isAnomaly !== null && (
+            <Card className="shadow-lg border-0">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <AlertTriangle className="h-5 w-5 mr-2 text-orange-600" />
+                  Model-based Anomaly Detection
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isAnomaly ? (
+                  <Alert variant="destructive">
+                    <AlertDescription className="text-sm">
+                      🚨 This record is flagged as an <b>anomaly</b> by the detection model.<br />
+                      {anomalies.length > 0 ? (
+                        <>
+                          <br />Reason(s):
+                          <ul className="list-disc ml-4">
+                            {anomalies.map((anomaly, idx) => (
+                              <li key={idx}>{anomaly}</li>
+                            ))}
+                          </ul>
+                        </>
+                      ) : (
+                        <> Please check thoroughly!                          </>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert>
+                    <AlertDescription className="text-green-700">
+                      ✅ This record is <b>not</b> flagged as an anomaly by the detection model.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          
+
+          {/* Anomaly Detection (Heuristic) 
           <Card className="shadow-lg border-0">
             <CardHeader>
               <CardTitle className="flex items-center">
@@ -414,8 +546,10 @@ const GradePredictionForm = () => {
               )}
             </CardContent>
           </Card>
+          */}
         </div>
       )}
+      
 
       {/* Prediction Result */}
       {prediction && (

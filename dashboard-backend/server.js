@@ -14,6 +14,7 @@ app.use(express.json());
 app.use('/api/courses', require('./routes/courseRoutes'));    // ✅ ./routes/...
 app.use('/api/students', require('./routes/studentRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/grades', require('./routes/grades'));
 
 const PORT = process.env.PORT || 5003;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

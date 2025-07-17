@@ -35,6 +35,49 @@ export interface LearningTrend {
   icon: string;
 }
 
+// Interface for grade record to be saved to database
+export interface GradeRecord {
+  name: string;
+  rollNo: string;
+  backlogs: number;
+  prevSemesterGPA: number;
+  cumulativeGPA: number;
+  test1: number;
+  test2: number;
+  test3: number;
+  attendancePercent: number;
+  adherenceToDeadlines: number;
+  grade: string;
+  course: string;
+}
+
+// Save grade prediction record to database
+export const saveGradeRecord = async (gradeRecord: GradeRecord): Promise<boolean> => {
+  try {
+    console.log('Saving grade record to database:', gradeRecord);
+    
+    const response = await fetch('http://localhost:5005/api/grades/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(gradeRecord),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('Grade record saved successfully:', result);
+    return true;
+  } catch (error) {
+    console.error('Error saving grade record:', error);
+    return false;
+  }
+};
+
 // Detect anomalies in the input form data
 export const detectInputAnomalies = (formData: PredictionFormData): string[] => {
   const anomalies: string[] = [];
@@ -154,22 +197,10 @@ export const predictGrade = async ({
   toast = () => {},
   setAnomalies = () => {},
 }: PredictGradeParams) => {
-  setIsLoading(true);
+  setIsLoading(true); // Should be true at the beginning of handlePredict, handled there
   console.log('Starting prediction with data:', formData);
 
-  const foundAnomalies = detectInputAnomalies(formData);
-  setAnomalies(foundAnomalies);
-//
- // if (foundAnomalies.length > 0) {
-  //  toast({
-   //   title: "Possible Data Anomalies Detected",
-    //  description: foundAnomalies.join(' '),
-    //  variant: "destructive",
-   // });
-   // setIsLoading(false);
-   // return;
- // }
-  //
+  // ... (heuristic anomaly detection moved to form for better control)
 
   try {
     const requestData = {
@@ -184,9 +215,9 @@ export const predictGrade = async ({
       adherenceToDeadlines: formData.adherenceToDeadlines[0],
     };
 
-    console.log('Sending request to API:', requestData);
+    console.log('Sending prediction request to API:', requestData);
 
-   const response = await fetch('/predict', {
+   const response = await fetch('http://localhost:5000/predict', { // Ensure port 5000
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -194,7 +225,7 @@ export const predictGrade = async ({
       body: JSON.stringify(requestData),
     });
 
-    console.log('Response status:', response.status);
+    console.log('Prediction Response status:', response.status);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -204,14 +235,14 @@ export const predictGrade = async ({
     const result = await response.json();
     console.log('Prediction result:', result);
 
-    setPrediction(result);
+    setPrediction(result); // This will be handled by the form now to ensure sequence
 
     toast({
       title: "Prediction Complete!",
       description: `Your predicted grade is ${result.predicted_grade} with ${result.confidence}% confidence.`,
     });
   } catch (error: any) {
-    console.error('Prediction error:', error);
+    console.error('Prediction API error:', error);
 
     let errorMessage = "Failed to get prediction.";
     if (error.message?.includes('Failed to fetch')) {
@@ -226,7 +257,7 @@ export const predictGrade = async ({
       variant: "destructive",
     });
   } finally {
-    setIsLoading(false);
+    // setIsLoading(false); // This will be handled by the form now to ensure sequence
   }
 };
 
@@ -270,4 +301,24 @@ export const mockpredictGrade = async (formData: PredictionFormData): Promise<Pr
     predicted_grade: predictedGrade,
     confidence: confidence
   };
+};
+
+// Call backend anomaly detection API
+export const detectAnomaly = async (formData: PredictionFormData): Promise<{ anomaly: boolean }> => {
+  // Prepare the record for the backend
+  const record = {
+    cumulativeGPA: formData.cumulativeGPA,
+    numberOfBacklogs: formData.numberOfBacklogs,
+    t1Marks: formData.t1Marks,
+    t2Marks: formData.t2Marks,
+    attendancePercentage: formData.attendancePercentage,
+    taMarks: formData.taMarks,
+  };
+  const response = await fetch('http://localhost:5000/anomaly-detect', { // Ensure port 5000
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(record),
+  });
+  if (!response.ok) throw new Error('Anomaly detection failed');
+  return response.json();
 };

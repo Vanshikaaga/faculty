@@ -41,11 +41,6 @@ It transforms raw academic data into actionable insights — bridging the gap be
 
 ### 🎥 Demo
 
-Watch the full walkthrough here: [YouTube Demo](https://youtu.be/b0Y4dvWoZuQ)
+Watch the full walkthrough here: [YouTube Demo](https://youtu.be/5TKhA4Ufz_4)
 
-```
 
----
-
-Would you like me to also create a **professional project logo/banner** (like a minimal "EduSight AI" header image) that you can add at the very top of this README to make it stand out?
-```

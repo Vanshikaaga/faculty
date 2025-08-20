@@ -37,5 +37,13 @@ export default defineConfig(async ({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
+    optimizeDeps: {
+      include: ["axios"], // ✅ force axios to bundle
+    },
+    build: {
+      rollupOptions: {
+        external: [], // ✅ don’t externalize axios
+      },
+    },
   };
 });
